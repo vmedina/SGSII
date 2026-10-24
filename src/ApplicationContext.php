@@ -24,6 +24,7 @@ use Sgsii\Controllers\AuthController;
 
 final class ApplicationContext
 {
+    /** Contenedor inmutable con las dependencias disponibles durante una petición. */
     public function __construct(
         public readonly \App $application,
         public readonly Request $request,

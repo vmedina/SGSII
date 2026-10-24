@@ -18,6 +18,7 @@ $adminPages = ['users','rooms','supplies','loans','reports'];
 if (in_array($page, $adminPages, true)) require_admin();
 if ($page !== 'login') require_login();
 
+/** Genera las opciones de salas e insumos para los selectores de recursos. */
 function resource_options(array $rooms, array $supplies, ?string $selected = null): string { $html = ''; foreach ($rooms as $r) $html .= '<option value="room:' . $r['id'] . '"' . ($selected === 'room:' . $r['id'] ? ' selected' : '') . '>Sala - ' . e($r['name']) . '</option>'; foreach ($supplies as $s) $html .= '<option value="supply:' . $s['id'] . '"' . ($selected === 'supply:' . $s['id'] ? ' selected' : '') . '>Insumo - ' . e($s['name']) . '</option>'; return $html; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

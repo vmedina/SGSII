@@ -29,6 +29,10 @@ use Sgsii\Validation\Validator;
 
 final class App
 {
+    /**
+     * Fachada de la aplicación: concentra el acceso a base de datos y delega
+     * cada operación de negocio en el servicio especializado correspondiente.
+     */
     private ?AuthenticationService $authentication = null;
     private ?ResourceService $resourceService = null;
     private ?ReservationService $reservationService = null;
@@ -40,22 +44,29 @@ final class App
 
     public static function connect(string $path, ?DateTimeImmutable $clock = null): self
     {
+        // Esta conexión SQLite se usa principalmente en pruebas y desarrollo.
         $db = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
         $db->exec('PRAGMA foreign_keys = ON');
         $db->exec('PRAGMA busy_timeout = 3000');
         return new self($db, $clock);
     }
 
+    /** Devuelve la conexión compartida por los servicios. */
     public function db(): PDO { return $this->db; }
+    /** Ejecuta una consulta parametrizada y devuelve todas sus filas. */
     public function all(string $sql, array $params = []): array { $s = $this->db->prepare($sql); $s->execute($params); return $s->fetchAll(); }
+    /** Ejecuta una consulta y devuelve su primera fila, o null si no existe. */
     public function one(string $sql, array $params = []): ?array { $rows = $this->all($sql, $params); return $rows[0] ?? null; }
+    /** Ejecuta una sentencia parametrizada que no necesita devolver filas. */
     public function execute(string $sql, array $params = []): void { $s = $this->db->prepare($sql); $s->execute($params); }
+    /** Obtiene el identificador generado por la última inserción. */
     public function id(): int { return (int) $this->db->lastInsertId(); }
 
     public function login(string $username, string $password): ?array { return $this->authentication()->login($username, $password); }
 
     public function saveUser(array $data, ?int $id = null): void
     {
+        // Valida y normaliza los campos antes de crear o actualizar el usuario.
         $username = Validator::text($data['username'] ?? '', 3, 50, 'Usuario');
         $first = Validator::text($data['first_name'] ?? '', 1, 80, 'Nombre');
         $last = Validator::text($data['last_name'] ?? '', 1, 80, 'Apellido');
@@ -77,6 +88,7 @@ final class App
 
     public function deactivate(string $table, int $id): void
     {
+        // La lista blanca evita convertir una entrada HTTP en un nombre SQL.
         if (!in_array($table, ['users', 'rooms', 'supplies'], true)) throw new InvalidArgumentException('Entidad inválida.');
         if ($table === 'users') { (new UserRepository($this->db))->deactivate($id); return; }
         if ($table === 'rooms') { $this->resourceService()->deactivateRoom($id); return; }
@@ -94,6 +106,7 @@ final class App
     public function incidentsFor(int $viewerId, bool $admin): array { return (new IncidentRepository($this->db))->findForViewer($viewerId, $admin); }
     public function reportSummary(mixed $fromValue, mixed $toValue): array { return $this->reportService()->summary($fromValue, $toValue); }
 
+    /** Crea el servicio de autenticación una sola vez y lo reutiliza. */
     private function authentication(): AuthenticationService { return $this->authentication ??= new AuthenticationService(new UserRepository($this->db)); }
     private function resourceService(): ResourceService { return $this->resourceService ??= new ResourceService($this->db, new ResourceRepository($this->db), $this->clock); }
     private function reservationService(): ReservationService { return $this->reservationService ??= new ReservationService($this->db, new \Sgsii\Repositories\ReservationRepository($this->db), $this->clock); }

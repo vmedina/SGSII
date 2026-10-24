@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class DashboardRepository
 {
+    /** Proporciona los indicadores resumidos mostrados en el panel principal. */
     public function __construct(private \PDO $database) {}
 
     public function findActiveReservationsForDate(string $date): array

@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class LoanRepository
 {
+    /** Persiste préstamos y consultas relacionadas con su estado de devolución. */
     public function __construct(private \PDO $database) {}
 
     public function findAll(): array

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 function start_session(): void
 {
+    // Configura una sesión segura una sola vez por petición.
     if (session_status() === PHP_SESSION_ACTIVE) return;
     session_set_cookie_params([
         'httponly' => true,
@@ -14,11 +15,13 @@ function start_session(): void
 
 function e(string|int|float|bool|null $value): string
 {
+    // Convierte un valor a texto HTML seguro para mostrarlo en una vista.
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 function user_error_message(Throwable $error): string
 {
+    // Traduce errores técnicos a mensajes apropiados para el usuario final.
     if ($error instanceof InvalidArgumentException) {
         return $error->getMessage();
     }
@@ -30,6 +33,8 @@ function user_error_message(Throwable $error): string
 
 function log_internal_error(Throwable $error, ?string $logPath = null): void
 {
+    // Registra solo metadatos del error para facilitar diagnóstico sin filtrar
+    // detalles internos al navegador.
     if ($logPath === null) {
         $logDirectory = dirname(__DIR__) . '/logs';
         if (!is_dir($logDirectory) && !@mkdir($logDirectory, 0775, true)) return;
@@ -49,6 +54,7 @@ function log_internal_error(Throwable $error, ?string $logPath = null): void
 
 function handle_uncaught_exception(Throwable $error): void
 {
+    // Última barrera de errores no controlados: registra y responde con 500.
     log_internal_error($error);
     if (!headers_sent()) http_response_code(500);
     echo 'Ocurrió un error interno. Intente nuevamente.';
@@ -56,17 +62,20 @@ function handle_uncaught_exception(Throwable $error): void
 
 function csrf_token(): string
 {
+    // Genera el token una vez y lo reutiliza durante la sesión.
     return $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
 }
 
 function rotate_csrf_token(): string
 {
+    // Invalida el token anterior, por ejemplo después de autenticar al usuario.
     unset($_SESSION['csrf']);
     return csrf_token();
 }
 
 function verify_csrf(): void
 {
+    // Compara el token de sesión con el enviado por el formulario.
     $sessionToken = $_SESSION['csrf'] ?? null;
     $token = $_POST['csrf'] ?? '';
     if (
@@ -81,10 +90,12 @@ function verify_csrf(): void
     }
 }
 
+/** Devuelve el usuario autenticado guardado en la sesión, si existe. */
 function current_user(): ?array { return $_SESSION['user'] ?? null; }
 
 function invalidate_session_user(): void
 {
+    // Elimina la identidad y regenera el identificador para evitar fijación de sesión.
     unset($_SESSION['user'], $_SESSION['csrf']);
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_regenerate_id(true);
@@ -93,6 +104,7 @@ function invalidate_session_user(): void
 
 function revalidate_session_user(App $app): void
 {
+    // Confirma en la base de datos que el usuario de sesión sigue activo.
     $sessionUser = current_user();
     if ($sessionUser === null) return;
 
@@ -117,9 +129,15 @@ function revalidate_session_user(App $app): void
     ];
 }
 
+/** Indica si la sesión pertenece a un administrador. */
 function is_admin(): bool { return (current_user()['role'] ?? null) === 'admin'; }
+/** Detiene la petición y redirige al formulario de inicio de sesión si hace falta. */
 function require_login(): void { if (!current_user()) { header('Location: ?page=login'); exit; } }
+/** Exige una sesión autenticada con rol administrador. */
 function require_admin(): void { require_login(); if (!is_admin()) { http_response_code(403); exit('Acceso denegado.'); } }
+/** Guarda un mensaje temporal que se mostrará en la siguiente navegación. */
 function flash(string $type, string $message): void { $_SESSION['flash'] = [$type, $message]; }
+/** Recupera y elimina el mensaje temporal de la sesión. */
 function pull_flash(): ?array { $flash = $_SESSION['flash'] ?? null; unset($_SESSION['flash']); return $flash; }
+/** Redirige a una página interna usando una URL codificada. */
 function go(string $page): never { header('Location: ?page=' . rawurlencode($page)); exit; }

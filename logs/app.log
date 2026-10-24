@@ -7,3 +7,5 @@
 2026-10-24T01:37:08+02:00 PDOException code=2002 source=Database.php:46
 2026-10-24T01:37:13+02:00 PDOException code=2002 source=Database.php:46
 2026-10-24T01:37:50+02:00 PDOException code=2002 source=Database.php:46
+2026-10-24T14:55:39+02:00 PDOException code=2002 source=Database.php:49
+2026-10-24T14:55:57+02:00 PDOException code=2002 source=Database.php:49

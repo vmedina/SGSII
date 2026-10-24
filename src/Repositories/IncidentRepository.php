@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class IncidentRepository
 {
+    /** Encapsula la persistencia y visibilidad de incidencias de recursos. */
     public function __construct(private \PDO $database) {}
 
     public function findForViewer(int $viewerId, bool $admin): array

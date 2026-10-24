@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class ReservationRepository
 {
+    /** Encapsula las lecturas y escrituras de reservas. */
     public function __construct(private \PDO $database) {}
 
     public function findById(mixed $id): ?array

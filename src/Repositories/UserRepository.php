@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class UserRepository
 {
+    /** Encapsula las consultas de usuarios y nunca expone SQL al controlador. */
     public function __construct(private \PDO $database) {}
 
     public function findById(mixed $id): ?array
@@ -14,11 +15,13 @@ final class UserRepository
 
     public function findActiveByUsername(string $username): ?array
     {
+        // El inicio de sesión solo considera cuentas activas.
         return $this->fetchOne('SELECT * FROM users WHERE username=? AND active=1', [$username]);
     }
 
     public function findActiveSessionUser(int $id): ?array
     {
+        // Consulta el subconjunto mínimo necesario para revalidar una sesión.
         return $this->fetchOne(
             'SELECT id, first_name, role FROM users WHERE id=? AND active=1',
             [$id]
@@ -27,6 +30,7 @@ final class UserRepository
 
     public function findPasswordHash(int $id): ?string
     {
+        // Recupera el hash sin devolver otros datos sensibles al servicio.
         $user = $this->fetchOne('SELECT password_hash FROM users WHERE id=?', [$id]);
         return $user['password_hash'] ?? null;
     }
@@ -43,6 +47,7 @@ final class UserRepository
 
     public function findActiveTeachers(): array
     {
+        // Los administradores pueden asignar reservas solo a docentes activos.
         return $this->fetchAll(
             "SELECT id,first_name,last_name FROM users WHERE active=1 AND role='user' ORDER BY last_name,first_name"
         );
@@ -71,6 +76,7 @@ final class UserRepository
 
     private function fetchAll(string $query, array $parameters = []): array
     {
+        // Ejecuta lecturas parametrizadas y devuelve filas asociativas.
         $statement = $this->database->prepare($query);
         $statement->execute($parameters);
         return $statement->fetchAll();
@@ -78,12 +84,14 @@ final class UserRepository
 
     private function fetchOne(string $query, array $parameters = []): ?array
     {
+        // Convierte una consulta de una fila en null cuando no encuentra datos.
         $rows = $this->fetchAll($query, $parameters);
         return $rows[0] ?? null;
     }
 
     private function execute(string $query, array $parameters = []): void
     {
+        // Ejecuta escrituras sin concatenar valores recibidos del usuario.
         $statement = $this->database->prepare($query);
         $statement->execute($parameters);
     }

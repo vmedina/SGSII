@@ -5,6 +5,7 @@ namespace Sgsii\Repositories;
 
 final class ReportRepository
 {
+    /** Ejecuta las consultas agregadas utilizadas por la pantalla de reportes. */
     public function __construct(private \PDO $database) {}
 
     public function summary(string $from, string $to): array

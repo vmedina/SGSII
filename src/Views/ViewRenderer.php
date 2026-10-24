@@ -5,6 +5,9 @@ namespace Sgsii\Views;
 
 final class ViewRenderer
 {
+    /**
+     * Carga una plantilla PHP desde una raíz controlada y devuelve su HTML.
+     */
     private string $viewsPath;
 
     public function __construct(string $viewsPath)
@@ -19,6 +22,7 @@ final class ViewRenderer
 
     public function render(string $view, array $values = []): string
     {
+        // La lista blanca impide escapar de la carpeta de vistas mediante rutas.
         if (!preg_match('/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/', $view)) {
             throw new \InvalidArgumentException('Nombre de vista inválido.');
         }
@@ -31,6 +35,7 @@ final class ViewRenderer
         $context = new ViewContext($values);
         ob_start();
         try {
+            // La plantilla recibe $context y escribe el HTML en el búfer.
             require $path;
             return (string) ob_get_clean();
         } catch (\Throwable $error) {

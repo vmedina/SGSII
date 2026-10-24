@@ -11,6 +11,7 @@ use Sgsii\Validation\Validator;
 
 final class LoanService
 {
+    /** Controla préstamos y devoluciones respetando el stock disponible. */
     public function __construct(
         private \PDO $database,
         private LoanRepository $loans,
@@ -24,6 +25,8 @@ final class LoanService
 
     public function create(array $data): void
     {
+        // Valida el formulario y reserva la fila del insumo antes de comprobar
+        // stock, evitando que dos préstamos concurrentes lo sobreasignen.
         $supply = Validator::integer($data['supply_id'] ?? null, 1, PHP_INT_MAX, 'Insumo');
         $user = Validator::integer($data['user_id'] ?? null, 1, PHP_INT_MAX, 'Docente');
         $quantity = Validator::integer($data['quantity'] ?? null, 1, 9999, 'Cantidad');
@@ -48,11 +51,13 @@ final class LoanService
 
     public function return(int $id): void
     {
+        // Marca el préstamo como devuelto y libera la cantidad comprometida.
         $this->loans->returnLoan($id);
     }
 
     private function supplyCommittedQuantity(int $supplyId): int
     {
+        // Suma préstamos abiertos y el pico de reservas futuras.
         $loaned = (int) $this->one(
             'SELECT COALESCE(SUM(quantity),0) AS used FROM loans WHERE supply_id=? AND returned_at IS NULL',
             [$supplyId]
@@ -62,6 +67,7 @@ final class LoanService
 
     private function reservedSupplyPeak(int $supplyId): int
     {
+        // Calcula el máximo de unidades reservadas simultáneamente por día.
         $clock = $this->clock ?? new \DateTimeImmutable('now');
         $today = $clock->format('Y-m-d');
         $now = $clock->format('H:i');
@@ -104,7 +110,9 @@ final class LoanService
         $this->transactions->rollback($started);
     }
 
+    /** Añade bloqueo de fila únicamente para el motor que lo soporta aquí. */
     private function forUpdateClause(): string { return $this->driverName() === 'mysql' ? ' FOR UPDATE' : ''; }
+    /** Identifica el motor PDO activo. */
     private function driverName(): string { return (string) $this->database->getAttribute(\PDO::ATTR_DRIVER_NAME); }
 
     private function all(string $query, array $parameters = []): array

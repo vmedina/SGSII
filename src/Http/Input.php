@@ -5,8 +5,12 @@ namespace Sgsii\Http;
 
 final class Input
 {
+    /**
+     * Centraliza conversiones y validaciones de valores recibidos por HTTP.
+     */
     public static function postInt(string $name): int
     {
+        // Solo acepta identificadores enteros positivos provenientes del POST.
         $value = filter_input(INPUT_POST, $name, FILTER_VALIDATE_INT);
         if ($value === false || $value === null || $value < 1) {
             throw new \InvalidArgumentException('Identificador inválido.');

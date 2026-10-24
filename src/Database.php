@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 final class Database
 {
+    /** Gestiona la configuración y conexión PDO para SQLite o MySQL. */
     public static function configuration(string $root): array
     {
+        // Si no hay configuración local, el proyecto funciona con SQLite.
         $localConfig = $root . '/config.local.php';
         if (!file_exists($localConfig)) {
             return [
@@ -22,6 +24,7 @@ final class Database
 
     public static function connect(array $config): PDO
     {
+        // PDO unifica ambos motores y las opciones fuerzan consultas seguras.
         $driver = $config['driver'] ?? null;
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -51,11 +54,13 @@ final class Database
 
     public static function application(string $root): PDO
     {
+        // Atajo usado por el punto de entrada de la aplicación.
         return self::connect(self::configuration($root));
     }
 
     private static function validate(array $config, string $root): array
     {
+        // Normaliza valores y rechaza configuraciones incompletas o inseguras.
         $driver = $config['driver'] ?? null;
         if ($driver === 'sqlite') {
             $path = $config['path'] ?? ($root . '/database/sgsii.sqlite');

@@ -11,6 +11,7 @@ use Sgsii\Validation\Validator;
 
 final class ReservationService
 {
+    /** Gestiona creación, edición, disponibilidad y cancelación de reservas. */
     private const RESOURCE_STORAGE = [
         'room' => ['table' => 'rooms', 'column' => 'room_id'],
         'supply' => ['table' => 'supplies', 'column' => 'supply_id'],
@@ -29,6 +30,8 @@ final class ReservationService
 
     public function create(int $actorId, array $data, ?int $reservationId = null, bool $admin = false): void
     {
+        // Valida el pedido, bloquea el recurso y vuelve a comprobar disponibilidad
+        // dentro de la transacción para evitar reservas simultáneas incompatibles.
         [$type, $resourceId, $date, $start, $end, $quantity] = $this->reservationRequest($data);
         $today = $this->now()->format('Y-m-d');
         $storage = $this->resourceStorage($type);
@@ -77,6 +80,7 @@ final class ReservationService
 
     public function checkAvailability(array $data): array
     {
+        // Devuelve un resultado descriptivo para la interfaz, no solo true/false.
         [$type, $resourceId, $date, $start, $end, $quantity] = $this->reservationRequest($data);
         $table = $this->resourceStorage($type)['table'];
         $resource = $this->one("SELECT * FROM {$table} WHERE id=?", [$resourceId]);
@@ -127,6 +131,8 @@ final class ReservationService
 
     public function available(string $type, int $id, string $date, string $start, string $end, int $quantity, ?int $exclude = null): bool
     {
+        // Las reservas se consideran solapadas cuando inicio < finNueva y
+        // fin > inicioNueva; en insumos también se descuenta lo prestado.
         $column = $this->resourceStorage($type)['column'];
         $sql = "SELECT COALESCE(SUM(quantity),0) AS used FROM reservations WHERE {$column}=? AND reservation_date=? AND status='active' AND start_time < ? AND end_time > ?";
         $params = [$id, $date, $end, $start];
@@ -140,6 +146,7 @@ final class ReservationService
 
     public function cancel(int $id, int $actorId, bool $admin): void
     {
+        // El propietario o un administrador pueden cancelar una reserva activa.
         $reservation = $this->reservations->findActiveOwner($id);
         if (!$reservation || (!$admin && (int) $reservation['user_id'] !== $actorId)) {
             throw new \InvalidArgumentException('No puede cancelar esa reserva.');
@@ -149,6 +156,7 @@ final class ReservationService
 
     private function reservationRequest(array $data): array
     {
+        // Normaliza tipo, recurso, fecha, horario y cantidad en un único formato.
         $type = Validator::choice($data['resource_type'] ?? '', ['room', 'supply'], 'Tipo de recurso');
         $resourceId = Validator::integer($data['resource_id'] ?? null, 1, PHP_INT_MAX, 'Recurso');
         $date = Validator::date($data['reservation_date'] ?? '');
@@ -162,6 +170,7 @@ final class ReservationService
 
     private function activeTeacherId(mixed $value): int
     {
+        // Impide que un administrador asigne la reserva a una cuenta inválida.
         $userId = Validator::integer($value, 1, PHP_INT_MAX, 'Docente');
         $teacher = $this->one("SELECT id FROM users WHERE id=? AND active=1 AND role='user'", [$userId]);
         if (!$teacher) throw new \InvalidArgumentException('El docente responsable no está disponible.');
@@ -170,6 +179,7 @@ final class ReservationService
 
     private function resourceStorage(string $type): array
     {
+        // Traduce el tipo de recurso a tabla y columna sin interpolar entrada libre.
         return self::RESOURCE_STORAGE[$type] ?? throw new \InvalidArgumentException('Tipo de recurso inválido.');
     }
 
@@ -183,8 +193,11 @@ final class ReservationService
         $this->transactions->rollback($started);
     }
 
+    /** Añade bloqueo de fila para MySQL durante las escrituras concurrentes. */
     private function forUpdateClause(): string { return $this->driverName() === 'mysql' ? ' FOR UPDATE' : ''; }
+    /** Devuelve el motor PDO activo. */
     private function driverName(): string { return (string) $this->database->getAttribute(\PDO::ATTR_DRIVER_NAME); }
+    /** Usa el reloj inyectado en pruebas o la hora actual en producción. */
     private function now(): \DateTimeImmutable { return $this->clock ?? new \DateTimeImmutable('now'); }
 
     private function execute(string $query, array $parameters = []): void

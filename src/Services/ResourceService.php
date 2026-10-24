@@ -11,6 +11,7 @@ use Sgsii\Validation\Validator;
 
 final class ResourceService
 {
+    /** Aplica reglas de negocio para salas, insumos, stock e incidencias. */
     private const RESOURCE_STORAGE = [
         'room' => ['table' => 'rooms', 'column' => 'room_id'],
         'supply' => ['table' => 'supplies', 'column' => 'supply_id'],
@@ -29,6 +30,7 @@ final class ResourceService
 
     public function saveRoom(array $data, ?int $id = null): void
     {
+        // Valida los datos comunes y decide entre crear una sala o actualizarla.
         $values = [
             Validator::text($data['name'] ?? '', 2, 100, 'Nombre'),
             Validator::text($data['room_number'] ?? '', 1, 30, 'Número'),
@@ -44,6 +46,8 @@ final class ResourceService
 
     public function saveSupply(array $data, ?int $id = null): void
     {
+        // Además de validar campos, protege stock y estado frente a reservas,
+        // préstamos e incidencias que todavía están activos.
         $values = [
             Validator::text($data['name'] ?? '', 2, 100, 'Nombre'),
             Validator::text($data['asset_code'] ?? '', 1, 50, 'Código'),
@@ -82,6 +86,7 @@ final class ResourceService
 
     public function deactivateRoom(int $id): void
     {
+        // Una sala bloqueada por una incidencia no puede desactivarse.
         if ($this->incidentBlockerCount('room', $id) > 0) {
             throw new \InvalidArgumentException('La sala ya está bloqueada por una incidencia; resuélvala antes de desactivarla.');
         }
@@ -90,6 +95,7 @@ final class ResourceService
 
     public function deactivateSupply(int $id): void
     {
+        // El bloqueo transaccional evita desactivar un insumo con compromisos.
         $transactionStarted = $this->beginWriteTransaction('supplies', $id);
         try {
             if ($this->supplyCommittedQuantity($id) > 0) {
@@ -105,6 +111,7 @@ final class ResourceService
 
     private function incidentBlockerCount(string $type, int $resourceId): int
     {
+        // Cuenta incidencias no resueltas que impiden utilizar el recurso.
         $column = self::RESOURCE_STORAGE[$type]['column'];
         return (int) $this->one(
             "SELECT COUNT(*) AS total FROM incidents WHERE {$column}=? AND status!='resolved' AND (urgency='high' OR status='in_progress')",
@@ -114,6 +121,7 @@ final class ResourceService
 
     private function supplyCommittedQuantity(int $supplyId): int
     {
+        // El stock comprometido combina préstamos abiertos y el pico reservado.
         $loaned = (int) $this->one(
             'SELECT COALESCE(SUM(quantity),0) AS used FROM loans WHERE supply_id=? AND returned_at IS NULL',
             [$supplyId]
@@ -123,6 +131,8 @@ final class ResourceService
 
     private function reservedSupplyPeak(int $supplyId): int
     {
+        // Recorre eventos de inicio/fin para calcular el máximo solapamiento,
+        // en lugar de sumar reservas que podrían ocurrir en horarios distintos.
         $clock = $this->clock ?? new \DateTimeImmutable('now');
         $today = $clock->format('Y-m-d');
         $now = $clock->format('H:i');
@@ -167,6 +177,7 @@ final class ResourceService
 
     private function forUpdateClause(): string
     {
+        // FOR UPDATE se agrega solo en MySQL; SQLite coordina mediante la transacción.
         return $this->driverName() === 'mysql' ? ' FOR UPDATE' : '';
     }
 

@@ -7,10 +7,12 @@ use Sgsii\Services\AuthenticationService;
 
 final class AuthController
 {
+    /** Traduce acciones HTTP de autenticación a operaciones del servicio. */
     public function __construct(private AuthenticationService $authentication) {}
 
     public function login(array $request): never
     {
+        // Regenera la sesión después de autenticar para evitar fijación de sesión.
         $user = $this->authentication->login(
             (string) ($request['username'] ?? ''),
             (string) ($request['password'] ?? '')
@@ -30,6 +32,7 @@ final class AuthController
 
     public function logout(): never
     {
+        // Descarta todos los datos de sesión y crea una sesión limpia para el flash.
         $_SESSION = [];
         session_destroy();
         session_start();
@@ -39,6 +42,7 @@ final class AuthController
 
     public function changePassword(array $request, array $user): never
     {
+        // Comprueba la confirmación antes de delegar el cambio al servicio.
         $newPassword = (string) ($request['new_password'] ?? '');
         if ($newPassword !== (string) ($request['new_password_confirm'] ?? '')) {
             throw new \InvalidArgumentException('La confirmación no coincide.');

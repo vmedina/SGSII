@@ -52,8 +52,10 @@ use Sgsii\Controllers\AuthController;
 
 final class Bootstrap
 {
+    /** Construye las dependencias de la aplicación en un único punto. */
     public static function createReservationRepository(App $application): ReservationRepository
     {
+        // Cada fábrica comparte la misma conexión PDO de la aplicación.
         return new ReservationRepository($application->db());
     }
 
@@ -124,6 +126,7 @@ final class Bootstrap
 
     public static function createApplication(string $root): App
     {
+        // Inicia sesión y vuelve a comprobar que la identidad almacenada siga activa.
         start_session();
 
         $application = new App(Database::application($root));
@@ -134,11 +137,13 @@ final class Bootstrap
 
     public static function createContext(string $root): ApplicationContext
     {
+        // Atajo para el punto de entrada web normal.
         return self::createContextForApplication(self::createApplication($root), $root);
     }
 
     public static function createContextForApplication(App $application, string $root): ApplicationContext
     {
+        // Ensambla request, router, vistas, servicios y repositorios para una petición.
         start_session();
         revalidate_session_user($application);
         $transactions = new TransactionCoordinator($application->db());

@@ -10,10 +10,13 @@ use Sgsii\Validation\Validator;
 
 final class ReportService
 {
+    /** Valida el período solicitado y obtiene el resumen de reportes. */
     public function __construct(private ReportRepository $reports) {}
 
     public function summary(mixed $fromValue, mixed $toValue): array
     {
+        // Las fechas se validan antes de llegar al repositorio y se exige un
+        // intervalo cronológicamente coherente.
         $from = Validator::date($fromValue);
         $to = Validator::date($toValue);
         if ($from > $to) {
