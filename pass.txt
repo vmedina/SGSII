@@ -1,0 +1,24 @@
+Ruta donde está instalado XAMPP [C:\xampp]:
+Archivos sincronizados en: C:\xampp\htdocs\sgsii
+Iniciando MySQL...
+MySQL iniciado correctamente.
+Base MySQL preparada: sgsii
+Configuración guardada en config.local.php
+
+CREDENCIALES INICIALES
+Usuario: admin
+Contraseña: Sg!955a280cf9088d9a
+Guárdelas y cambie la contraseña después de ingresar.
+
+PASS: instalación mysql lista; 6 tablas y administrador verificados.
+Iniciando Apache...
+Apache iniciado correctamente.
+
+INSTALACIÓN/ACTUALIZACIÓN COMPLETADA
+Abra: http://localhost/sgsii/
+Para cambios de aspecto, edite public\assets y vuelva a ejecutar este mismo script.
+No es necesario reiniciar Apache; use Ctrl+F5 en el navegador para renovar CSS y JavaScript.
+
+
+docente veronica usuario1234!
+
